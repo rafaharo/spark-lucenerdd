@@ -237,7 +237,7 @@ object LuceneQueryHelpers extends Serializable {
                   fieldName: String,
                   fieldText: String,
                   topK: Int,
-                  analyzer: String): Seq[SparkScoreDoc] = {
+                  analyzer: PerFieldAnalyzerWrapper): Seq[SparkScoreDoc] = {
     LuceneQueryHelpers.searchTopK(indexSearcher,
       PhraseQueryBuilder(fieldName, fieldText, analyzer).buildQuery(), topK)
   }

@@ -201,7 +201,7 @@ private[lucenerdd] class LuceneRDDPartition[T]
   override def phraseQuery(fieldName: String, fieldText: String,
                            topK: Int): LuceneRDDResponsePartition = {
     val results = LuceneQueryHelpers
-      .phraseQuery(indexSearcher, fieldName, fieldText, topK, QueryAnalyzer.getClass.getName)
+      .phraseQuery(indexSearcher, fieldName, fieldText, topK, PerFieldQueryAnalyzer())
 
     LuceneRDDResponsePartition(results)
   }

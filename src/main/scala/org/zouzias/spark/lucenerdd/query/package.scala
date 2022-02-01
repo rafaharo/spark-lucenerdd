@@ -17,11 +17,11 @@
 package org.zouzias.spark.lucenerdd
 
 import org.apache.lucene.analysis.Analyzer
+import org.apache.lucene.analysis.miscellaneous.PerFieldAnalyzerWrapper
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute
 import org.apache.lucene.index.Term
 import org.apache.lucene.queryparser.classic.QueryParser
-import org.apache.lucene.search.{BooleanClause, BooleanQuery, BoostQuery, FuzzyQuery, PhraseQuery, PrefixQuery, Query, TermQuery}
-import org.zouzias.spark.lucenerdd.LuceneRDD.loadConstructor
+import org.apache.lucene.search._
 
 import java.io.StringReader
 import scala.collection.mutable.ListBuffer
@@ -33,17 +33,19 @@ package object builders {
    */
   trait QueryBuilder extends Serializable {
 
+
     def buildQuery(): Query
 
     /**
      * Extract list of terms for a given analyzer
      *
      * @param text Text to analyze
+     * @param fieldName field name
      * @param analyzer Analyzer to utilize
      * @return
      */
-    def analyzeTerms(text: String, analyzer: Analyzer): List[String] = {
-      val stream = analyzer.tokenStream(null, new StringReader(text))
+    def analyzeTerms(text: String, fieldName: String, analyzer: Analyzer): List[String] = {
+      val stream = analyzer.tokenStream(fieldName, new StringReader(text))
       val cattr = stream.addAttribute(classOf[CharTermAttribute])
       stream.reset()
       val buffer = ListBuffer.empty[String]
@@ -116,21 +118,20 @@ package object builders {
    * PhraseQuery builder
    * @param fieldName Field name
    * @param fieldText Query
-   * @param analyzer Analyzer class name
+   * @param analyzer Analyzer wrapper
    * @param slop Terms slop
    */
   case class PhraseQueryBuilder(
     fieldName: String,
     fieldText: String,
-    analyzer: String,
+    analyzer: PerFieldAnalyzerWrapper,
     slop: Integer = 0
   ) extends TermBasedQueryBuilder {
 
     override def buildQuery(): Query = {
       val builder = new PhraseQuery.Builder()
       builder.setSlop(slop)
-      val luceneAnalyzer : Analyzer = loadConstructor(analyzer)
-      val terms = analyzeTerms(fieldText, luceneAnalyzer)
+      val terms = analyzeTerms(fieldText, fieldName, analyzer)
       terms.foreach( token => builder.add(new Term(fieldName, token)))
       builder.build()
     }
@@ -140,17 +141,16 @@ package object builders {
    * Field Analyzer based query builder
    * @param fieldName Field name
    * @param fieldText Query
-   * @param analyzer Analyzer class name
+   * @param analyzer Analyzer wrapper
    */
   case class FieldQueryBuilder(
                                  fieldName: String,
                                  fieldText: String,
-                                 analyzer: String
+                                 analyzer: PerFieldAnalyzerWrapper
                                ) extends TermBasedQueryBuilder {
 
     override def buildQuery(): Query = {
-      val luceneAnalyzer : Analyzer = loadConstructor(analyzer)
-      val queryParser = new QueryParser(fieldName, luceneAnalyzer)
+      val queryParser = new QueryParser(fieldName, analyzer)
       queryParser.parse(fieldText)
     }
   }
